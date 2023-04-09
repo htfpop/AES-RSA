@@ -1,3 +1,4 @@
+import base64
 import os
 import sys
 
@@ -36,14 +37,15 @@ class Crypt:
 
     def set_output_file(self, output_file): self.output_file = output_file
 
+    def print_pub(self): return ' '.join('{:02x}'.format(x) for x in self.get_key())
+
     def __str__(self):
         s = '[MODE]: {0}\n' \
             '[KEY_FILE]: {1}\n' \
             '[KEY]: {2}\n' \
             '[INPUT_FILE]: {3}\n' \
             '[OUTPUT_FILE]: {4}\n' \
-            .format(hex(self.get_mode()), self.get_key_file(), self.get_key(), self.get_input_file(),
-                    self.get_output_file())
+            .format(hex(self.get_mode()), self.get_key_file(), self.print_pub(), self.get_input_file(), self.get_output_file())
         return s
 
 
@@ -66,9 +68,14 @@ def key_IO(crypt_instance: Crypt):
         exit(-1)
 
     else:
-        with open(crypt_instance.key_file, 'r') as key:
-            crypt_instance.set_key(key.readlines())
-            key.close()
+        try:
+            with open(crypt_instance.key_file, 'rb') as key:
+                crypt_instance.set_key(base64.b64decode(key.read()))
+                key.close()
+        except IOError:
+            print(f'[ERROR]: IO Error. Could not find {crypt_instance.key_file} in files.\nExiting.')
+            exit(-1)
+
 
 
 def parse_args():
@@ -102,6 +109,9 @@ def parse_args():
 
 
 if __name__ == '__main__':
-    main()
+    #main()
     crypt_instance = parse_args()
+    key_IO(crypt_instance)
     print(f'---- instance of crypt----\r\n{crypt_instance}')
+    #print(f'---- debug----')
+    #crypt_instance.printpub()

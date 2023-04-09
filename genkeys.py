@@ -1,3 +1,4 @@
+import base64
 import os
 import sys
 
@@ -11,8 +12,8 @@ class RSA:
         # self.priv_name = name+'.priv'
         self.pub_name = 'keys\\' + name + '.pub'  # test only
         self.priv_name = 'keys\\' + name + '.priv'  # test only
-        self.pub_key = pub_key
-        self.priv_key = priv_key
+        self.pub_key: bytearray = pub_key
+        self.priv_key: bytearray = priv_key
 
     def get_pub(self): return self.pub_key
 
@@ -42,12 +43,12 @@ def key_IO(rsa: RSA):
         exit(-1)
 
     else:
-        with open(rsa.pub_name, 'w') as pub:
-            pub.write(rsa.get_pub_str())
+        with open(rsa.pub_name, 'wb') as pub:
+            pub.write(base64.b64encode(rsa.get_pub()))
             pub.close()
 
-        with open(rsa.priv_name, 'w') as priv:
-            priv.write(rsa.get_priv_str())
+        with open(rsa.priv_name, 'wb') as priv:
+            priv.write(base64.b64encode(rsa.get_priv()))
             priv.close()
 
 
@@ -57,7 +58,7 @@ def gen_key(rsa: RSA):
     :param rsa: RSA instance
     :return: None
     """
-    rsa.set_priv(os.urandom(RSA_MAX_SIZE_BYTES))
+    rsa.set_priv(bytearray(os.urandom(RSA_MAX_SIZE_BYTES)))
     rsa.set_pub(os.urandom(RSA_MAX_SIZE_BYTES))
 
 def parse_args():
@@ -73,8 +74,13 @@ def parse_args():
 
     return RSA(args[1])
 
+def debug(rsa_instance):
+    print('Public: ' + ' '.join('{:02x}'.format(x) for x in rsa_instance.pub_key))
+    print('Private: ' + ' '.join('{:02x}'.format(x) for x in rsa_instance.priv_key))
+
 
 if __name__ == '__main__':
     rsa_instance = parse_args()
     gen_key(rsa_instance)
     key_IO(rsa_instance)
+    debug(rsa_instance)
