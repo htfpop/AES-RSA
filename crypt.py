@@ -45,7 +45,8 @@ class Crypt:
             '[KEY]: {2}\n' \
             '[INPUT_FILE]: {3}\n' \
             '[OUTPUT_FILE]: {4}\n' \
-            .format(hex(self.get_mode()), self.get_key_file(), self.print_pub(), self.get_input_file(), self.get_output_file())
+            .format(hex(self.get_mode()), self.get_key_file(), self.print_pub(), self.get_input_file(),
+                    self.get_output_file())
         return s
 
 
@@ -75,7 +76,6 @@ def key_IO(crypt_instance: Crypt):
         except IOError:
             print(f'[ERROR]: IO Error. Could not find {crypt_instance.key_file} in files.\nExiting.')
             exit(-1)
-
 
 
 def parse_args():
@@ -109,9 +109,9 @@ def parse_args():
 
 
 if __name__ == '__main__':
-    #main()
+    # main()
     crypt_instance = parse_args()
     key_IO(crypt_instance)
     print(f'---- instance of crypt----\r\n{crypt_instance}')
-    #print(f'---- debug----')
-    #crypt_instance.printpub()
+    # print(f'---- debug----')
+    # crypt_instance.printpub()
