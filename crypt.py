@@ -2,6 +2,9 @@ import base64
 import os
 import sys
 
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.primitives import padding
+
 RSA_MAX_SIZE_BYTES = 128
 CRYPT_MAX_ARGS = 5
 ENCRYPT = 0xBEEF4DAD
@@ -37,7 +40,7 @@ class Crypt:
 
     def set_output_file(self, output_file): self.output_file = output_file
 
-    def print_pub(self): return ' '.join('{:02x}'.format(x) for x in self.get_key())
+    def print_key(self): return ' '.join('{:02x}'.format(x) for x in self.get_key())
 
     def __str__(self):
         s = '[MODE]: {0}\n' \
@@ -45,7 +48,7 @@ class Crypt:
             '[KEY]: {2}\n' \
             '[INPUT_FILE]: {3}\n' \
             '[OUTPUT_FILE]: {4}\n' \
-            .format(hex(self.get_mode()), self.get_key_file(), self.print_pub(), self.get_input_file(),
+            .format(hex(self.get_mode()), self.get_key_file(), self.print_key(), self.get_input_file(),
                     self.get_output_file())
         return s
 
@@ -108,10 +111,95 @@ def parse_args():
     return Crypt(mode=mode, key_file=args[2], input_file=args[3], output_file=args[4])
 
 
+def encrypt(crypt_inst: Crypt):
+    padder = padding.PKCS7(128).padder()
+    unpadder = padding.PKCS7(128).unpadder()
+    key = os.urandom(16)  # 128
+    infile = open('test/secret.txt', 'r')
+    data = bytes(infile.read(), 'utf-8')
+    infile.close()
+    cipher = Cipher(algorithms.AES128(key), modes.ECB())
+    encryptor = cipher.encryptor()
+    decryptor = cipher.decryptor()
+
+    padder_data = padder.update(data)
+    padder_data += padder.finalize()
+
+    ct = encryptor.update(padder_data) + encryptor.finalize()
+
+    pt = decryptor.update(ct) + decryptor.finalize()
+    print(pt)
+
+    unpadderdata = unpadder.update(pt)
+    unpadderdata += unpadder.finalize()
+
+    print(unpadderdata)
+
+    outfile = open('test/outfile.txt', 'wb')
+    outfile.write(unpadderdata)
+
+"""
+    padder = padding.PKCS7(128).padder()
+    unpadder = padding.PKCS7(128).unpadder()
+    data = b'helloworld111111'
+    key = os.urandom(16)
+    cipher = Cipher(algorithms.AES128(key), modes.ECB())
+    encryptor = cipher.encryptor()
+    decryptor = cipher.decryptor()
+
+
+    padder_data = padder.update(data)
+    padder_data += padder.finalize()
+
+    print(padder_data)
+
+    ct = encryptor.update(padder_data) + encryptor.finalize()
+    print(ct)
+
+    pt = decryptor.update(ct) + decryptor.finalize()
+
+    print(pt)
+
+    unpadderdata = unpadder.update(pt)
+    unpadderdata += unpadder.finalize()
+
+    print(unpadderdata)
+"""
+
+
+
+"""
+    key = os.urandom(16)  # 128
+    infile = open('test/secret.txt', 'r')
+    data = bytes(infile.read(), 'utf-8')
+    data = b'helloworld'
+    print(f'Len {len(data)} - {data}')
+    cipher = Cipher(algorithms.AES128(key), modes.ECB())
+    encryptor = cipher.encryptor()
+
+    padder_data = padder.update(data)
+    padder_data += padder.finalize()
+
+    print(f'len = {len(padder_data)} Padder: {padder_data}')
+
+    ct = encryptor.update(padder_data) + encryptor.finalize()
+    print(' '.join('{:02x}'.format(x) for x in ct))
+
+    decryptor = cipher.decryptor()
+    pt = decryptor.update(ct) + decryptor.finalize()
+
+    decrypted = unpadder.update(pt)
+    decrypted + unpadder.finalize()
+
+    print(f'len = {len(decrypted)} PT: {decrypted}')
+"""
+
+
 if __name__ == '__main__':
     # main()
     crypt_instance = parse_args()
     key_IO(crypt_instance)
     print(f'---- instance of crypt----\r\n{crypt_instance}')
+    encrypt(crypt_instance)
     # print(f'---- debug----')
     # crypt_instance.printpub()
