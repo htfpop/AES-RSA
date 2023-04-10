@@ -138,62 +138,6 @@ def encrypt(crypt_inst: Crypt):
     outfile = open('test/outfile.txt', 'wb')
     outfile.write(unpadderdata)
 
-"""
-    padder = padding.PKCS7(128).padder()
-    unpadder = padding.PKCS7(128).unpadder()
-    data = b'helloworld111111'
-    key = os.urandom(16)
-    cipher = Cipher(algorithms.AES128(key), modes.ECB())
-    encryptor = cipher.encryptor()
-    decryptor = cipher.decryptor()
-
-
-    padder_data = padder.update(data)
-    padder_data += padder.finalize()
-
-    print(padder_data)
-
-    ct = encryptor.update(padder_data) + encryptor.finalize()
-    print(ct)
-
-    pt = decryptor.update(ct) + decryptor.finalize()
-
-    print(pt)
-
-    unpadderdata = unpadder.update(pt)
-    unpadderdata += unpadder.finalize()
-
-    print(unpadderdata)
-"""
-
-
-
-"""
-    key = os.urandom(16)  # 128
-    infile = open('test/secret.txt', 'r')
-    data = bytes(infile.read(), 'utf-8')
-    data = b'helloworld'
-    print(f'Len {len(data)} - {data}')
-    cipher = Cipher(algorithms.AES128(key), modes.ECB())
-    encryptor = cipher.encryptor()
-
-    padder_data = padder.update(data)
-    padder_data += padder.finalize()
-
-    print(f'len = {len(padder_data)} Padder: {padder_data}')
-
-    ct = encryptor.update(padder_data) + encryptor.finalize()
-    print(' '.join('{:02x}'.format(x) for x in ct))
-
-    decryptor = cipher.decryptor()
-    pt = decryptor.update(ct) + decryptor.finalize()
-
-    decrypted = unpadder.update(pt)
-    decrypted + unpadder.finalize()
-
-    print(f'len = {len(decrypted)} PT: {decrypted}')
-"""
-
 
 if __name__ == '__main__':
     # main()
