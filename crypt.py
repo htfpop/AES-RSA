@@ -133,10 +133,11 @@ def encrypt(crypt_inst: Crypt):
     unpadderdata = unpadder.update(pt)
     unpadderdata += unpadder.finalize()
 
-    print(unpadderdata)
+    print(unpadderdata.decode())
 
     outfile = open('test/outfile.txt', 'wb')
     outfile.write(unpadderdata)
+    outfile.close()
 
 
 if __name__ == '__main__':
