@@ -63,8 +63,40 @@ def gen_key(rsa: RSA):
     :param rsa: RSA instance
     :return: None
     """
-    rsa.set_priv(bytearray(os.urandom(RSA_MAX_SIZE_BYTES)))
-    rsa.set_pub(os.urandom(RSA_MAX_SIZE_BYTES))
+    # rsa.set_priv(bytearray(os.urandom(RSA_MAX_SIZE_BYTES)))
+    # rsa.set_pub(os.urandom(RSA_MAX_SIZE_BYTES))
+    status = FAILURE
+    p1 = None
+    p2 = None
+
+    while p1 is None or p2 is None or status is not SUCCESS:
+        p1 = gen_prime()
+        p2 = gen_prime()
+
+        if p1 != p2:
+            status = SUCCESS
+
+    print(f'[p1]: {p1}')
+    print(f'[p2]: {p2}')
+
+    n = p1 * p2
+    totient = (p1-1) * (p2 - 1)
+    e = 65537
+"""
+    for x in range(100):
+        p = gen_prime()
+        print(f'P[{x}] = {p}')
+"""
+
+def gen_prime():
+    candidate = None
+    status = FAILURE
+
+    while status is not SUCCESS:
+        candidate = int.from_bytes(os.urandom(128), byteorder="big")
+        status = Miller_Rabin(candidate, 1024)
+
+    return candidate
 
 
 def parse_args():
@@ -110,7 +142,7 @@ def Miller_Rabin(n: int, tests):
 
     # Compute remainder = (n - 1) / 2 ^ s
     # NOTICE - USE INTEGER DIVISION. "/" for large numbers performs float division
-    remainder = (n-1) // pow(2, exponent)
+    remainder = (n - 1) // pow(2, exponent)
 
     # sanity check (n - 1) = 2^exponent * remainder
     if pow(2, exponent) * remainder != n - 1:
@@ -135,68 +167,8 @@ def Miller_Rabin(n: int, tests):
     return SUCCESS
 
 
-def test():
-    status = FAILURE
-    num = 0
-    carmichales = [561, 1105, 1729, 2465, 2821, 6601, 8911, 10585, 15841, 29341, 41041, 46657, 52633, 62745, 63973, 75361, 101101, 115921, 126217, 162401, 172081, 188461, 252601, 278545, 294409, 314821, 334153, 340561, 399001, 410041, 449065, 488881, 512461, 530881]
-
-    for i in range(len(carmichales)):
-        if Miller_Rabin(carmichales[i], 1024) == SUCCESS:
-            print(f'FAILURE')
-
-    print('done')
-"""
-    for x in range(50):
-        #print(f'x:{x}')
-        while status is not SUCCESS:
-            num = int.from_bytes(os.urandom(128), byteorder="big")
-            #print(f'Attempting: {num}')
-            status = Miller_Rabin(num, 100)
-
-        if not sympy.isprime(num):
-            print(f'MISMATCH : {num}')
-            break
-
-        print(f'prime {num}')
-        status = FAILURE
-"""
-
-
-def WTF():
-    NUMBER = 16311308084892934973
-    # NUMBER = 1234564598321548432154846513218461321498432118465132132184651321879846511
-    test1 = NUMBER - 1  # same number but even
-    test2 = NUMBER - 1  # same number but even
-    test3 = NUMBER - 1  # same number but even
-
-    # auto floor using //= ony check LSBit if 0/1 to determine odd/even
-    print(f'[TEST1 VALUE START]: {test1} ')
-    while test1 & 1 == 0:
-        temp = test1 // 2
-        test1 = temp
-        print(f'[TEST1]: {test1}')
-
-    print()
-
-    # using % 2 to determine if odd/even
-    print(f'[TEST2 VALUE START]: {test2} ')
-    while test2 % 2 == 0:
-        test2 = int(test2) / int(2)
-        print(f'[TEST2]: {test2}')
-
-    print()
-
-    # USING SHIFT
-    print(f'[TEST3 VALUE START]: {test3} ')
-    while test3 % 2 == 0:
-        test3 >>= 1
-        print(f'[TEST3]: {test3}')
-
-
 if __name__ == '__main__':
-    test()
-    # WTF()
-    # rsa_instance = parse_args()
-    # gen_key(rsa_instance)
-    # key_IO(rsa_instance)
-    # debug(rsa_instance)
+    rsa_instance = parse_args()
+    gen_key(rsa_instance)
+    key_IO(rsa_instance)
+    debug(rsa_instance)
