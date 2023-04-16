@@ -76,14 +76,6 @@ class Crypt:
         return s
 
 
-"""
-        return print(f'[MODE]: {self.get_mode()}\n'
-                     f'[KEY_FILE]: {self.get_key_file()}\n'
-                     f'[KEY]: {self.get_key()}\n'
-                     f'[INPUT_FILE]: {self.get_input_file()}\n'
-                     f'[OUTPUT_FILE]: {self.get_output_file()}\n')
-"""
-
 
 def main():
     print(f'Inside crypt.py\r\n')

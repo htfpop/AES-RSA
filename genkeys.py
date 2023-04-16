@@ -9,38 +9,32 @@ COMPOSITE_NUM = 0xDEADDEAD
 SUCCESS = 0xCAFECAFE
 FAILURE = 0xDEADBEEF
 
-
 class RSA:
     def __init__(self, name=None, pub_key=None, priv_key=None, modulus=None):
         self.name = name
-        self.pub_name = 'keys\\' + name + '.pub'  # test only
-        self.priv_name = 'keys\\' + name + '.priv'  # test only
+        self.pub_name =  name + '.pub'
+        self.priv_name = name + '.priv'
         self.pub_key = pub_key
         self.priv_key = priv_key
         self.modulus = modulus
 
+    def set_pub(self, pub_key): self.pub_key = pub_key
     def get_pub(self): return self.pub_key
 
-    def get_pub_str(self): return str(self.pub_key)
-
-    def set_pub(self, pub_key): self.pub_key = pub_key
-
+    def set_priv(self, priv_key): self.priv_key = priv_key
     def get_priv(self): return self.priv_key
 
-    def set_priv(self, priv_key): self.priv_key = priv_key
-
-    def get_priv_str(self): return self.priv_key
-
     def set_mod(self, modulus): self.modulus = modulus
-
     def get_mod(self): return self.modulus
 
 
-def main():
-    print(f'Inside genkeys.py')
-
-
 def key_IO(rsa: RSA):
+    """
+    This function handles the IO for generating <name>.pub and <name>.priv
+    NOTICE - Key pairs will be in BASE64
+    :param rsa: RSA instance that has been populated with both RSA Public / Private / Modulus instance
+    :return: None
+    """
     if rsa.pub_key is None:
         print(f'[ERROR]: RSA Public key is NULL!')
         exit(-1)
@@ -69,7 +63,9 @@ def key_IO(rsa: RSA):
 
 def gen_key(rsa: RSA):
     """
-    Utilizes Miller-Rabin Primality test for generating Prime numbers
+    This function generates RSA public and private keys
+    NOTICE - Public exponent is set to a static integer - 65537
+             ALL private/public keys pairs will be stored as base64
     :param rsa: RSA instance
     :return: None
     """
@@ -77,6 +73,7 @@ def gen_key(rsa: RSA):
     p1 = None
     p2 = None
 
+    # Attempt to generate 2 primes (p / q) and ensure they are not the same
     while p1 is None or p2 is None or status is not SUCCESS:
         p1 = gen_prime()
         p2 = gen_prime()
@@ -84,67 +81,44 @@ def gen_key(rsa: RSA):
         if p1 != p2:
             status = SUCCESS
 
-    print(f'[p1]: {p1}')
-    print(f'[p2]: {p2}')
+    #print(f'[p1]: {p1}')
+    #print(f'[p2]: {p2}')
 
+    # calculate RSA Modulus
     n = p1 * p2
+
+    # calculate RSA Totient (p-1)(q-1)
     totient = (p1 - 1) * (p2 - 1)
+
+    # Set static public exponent 2^16 + 1
     e = 65537
+
+    # Calculate modular inverse such that e * d = 1 Mod( Phi (n) )
     d = modinv(e, totient)
 
-    print(f'[private] = {d}')
-    print(f'[mod] = {n}')
+    #print(f'[private] = {d}')
+    #print(f'[mod] = {n}')
 
+    # Encode RSA Public Exponent as Base64
     e_64 = base64.b64encode(e.to_bytes((e.bit_length() + 7) // 8, byteorder='big'))
-    print(f'[e64] = {e_64}')
+    #print(f'[e64] = {e_64}')
 
-    pub_64 = base64.b64encode(d.to_bytes((d.bit_length() + 7) // 8, byteorder='big'))
-    print(f'[e64] = {pub_64}')
+    # Encode RSA Private Key as Base64
+    priv_64 = base64.b64encode(d.to_bytes((d.bit_length() + 7) // 8, byteorder='big'))
+    #print(f'[e64] = {pub_64}')
 
+    # Encode RSA Modulus as Base64
     mod_64 = base64.b64encode(n.to_bytes((n.bit_length() + 7) // 8, byteorder='big'))
-    print(f'[e64] = {mod_64}')
+    #print(f'[e64] = {mod_64}')
 
+    # Set all variables to respective members in our RSA instance
     rsa.set_pub(e_64)
-    rsa.set_priv(pub_64)
+    rsa.set_priv(priv_64)
     rsa.set_mod(mod_64)
 
-    test1 = int.from_bytes(base64.b64decode(rsa.get_pub()), byteorder='big')
-    test2 = int.from_bytes(base64.b64decode(rsa.get_priv()), byteorder='big')
-    test3 = int.from_bytes(base64.b64decode(rsa.get_mod()), byteorder='big')
-
-    print(test1 == e)
-    print(test2 == d)
-    print(test3 == n)
-
-    # rsa.set_pub(bytearray(e))
-
-    # rsa.set_priv(bytearray(d))
-
-    # rsa.set_mod(bytearray(n))
-
-    """
-    test = "Cryptography, or cryptology, is the practice and study of techniques for secure\ncommunication in the " \
-           "presence of adversarial behavior."
-    myint = int.from_bytes(test.encode(), byteorder='big')
-    print(myint)
-
-    enc = pow(myint, e, n)
-    print(f'Enc: {enc}')
-
-    dec = pow(enc, d, n)
-    print(f'dec: {dec}')
-
-    byte_string = dec.to_bytes((dec.bit_length() + 7) // 8, byteorder='big')
-    message = byte_string.decode(encoding='utf-8', errors='ignore')
-    print(message)
-
-
-
-    for x in range(100):
-        p = gen_prime()
-        print(f'P[{x}] = {p}')
-"""
-
+    #test1 = int.from_bytes(base64.b64decode(rsa.get_pub()), byteorder='big')
+    #test2 = int.from_bytes(base64.b64decode(rsa.get_priv()), byteorder='big')
+    #test3 = int.from_bytes(base64.b64decode(rsa.get_mod()), byteorder='big')
 
 def egcd(a, b):
     if a == 0:
@@ -163,6 +137,11 @@ def modinv(a, m):
 
 
 def gen_prime():
+    """
+    This function utilizes the Rabin-Miller primality test on a randomly generated number
+    to test for probable primes / composite numbers.
+    :return: Probable Prime number
+    """
     candidate = None
     status = FAILURE
 
@@ -199,10 +178,13 @@ def debug(rsa_instance):
 def Miller_Rabin(n: int, tests):
     """
     Miller-Rabin Primality test
+    <WARN> This algorithm implementation follows the following wikipedia page <WARN>
+    <WARN> Code has been commented to demonstrate understanding               <WARN>
     Pseudocode Algorithm origination: https://en.wikipedia.org/wiki/Miller%E2%80%93Rabin_primality_test
+    :param n: integer to test for primality
+    :param tests: number of test to perform
     :return: status - COMPOSITE_NUM / FAILURE / SUCCESS
     """
-
     y = 0
     exponent = 0
     remainder = 0
@@ -244,27 +226,8 @@ def Miller_Rabin(n: int, tests):
 
     return SUCCESS
 
-"""
-def b64test():
-    p = 127957588420386745086765575457872908695233629600310278052584039952300843395144810957925840258213116622068179970520791734746605213596186686820952083462451220874711108015759356361555132701379671952110421588410952801109110297441563260418099145314264706792960918515708961753189586733887264052823206158872301972001
-    bytes = p.to_bytes((p.bit_length() + 7) // 8, byteorder='big')
-    encoded = base64.b64encode(bytes)
-
-    with open('test\\mytest.txt', 'w') as f:
-        f.write(encoded.decode())
-        f.close()
-
-    with open('test\\mytest.txt', 'r') as i:
-        val = i.read()
-        new = base64.b64decode(val)
-        i.close()
-
-    newval = int.from_bytes(new, byteorder='big')
-    print(newval == p)
-"""
 
 if __name__ == '__main__':
-    #b64test()
     rsa_instance = parse_args()
     gen_key(rsa_instance)
     key_IO(rsa_instance)
