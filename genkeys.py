@@ -6,7 +6,6 @@
 * Purpose    : This file generates RSA-1024 Public/Private keys  *
 *****************************************************************"""
 
-import base64
 import os
 import sys
 import random
