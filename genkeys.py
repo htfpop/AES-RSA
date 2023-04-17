@@ -1,3 +1,11 @@
+""" **************************************************************
+* Programmer : Christopher K. Leung (2965-7518-69)               *
+* Course ID  : CSCI531 - Applied Cryptography                    *
+* Due Date   : March 16, 2023                                    *
+* Project    : RSA-AES Implementation                            *
+* Purpose    : This file generates RSA-1024 Public/Private keys  *
+*****************************************************************"""
+
 import base64
 import os
 import sys
@@ -44,22 +52,52 @@ def key_IO(rsa: RSA):
         exit(-1)
 
     else:
-        with open(rsa.pub_name, 'wb') as pub:
-            pub.write("--- RSA PUBLIC KEY ---\n".encode())
-            pub.write(rsa.get_pub())
-            pub.write("\n".encode())
-            pub.write("--- RSA MODULUS ---\n".encode())
-            pub.write(rsa.get_mod())
-            pub.close()
+        try:
+            with open(rsa.pub_name, 'wb') as pub:
+                pub.write("--- RSA PUBLIC KEY ---\n".encode())
+                pub.write(rsa.get_pub())
+                pub.write("\n".encode())
+                pub.write("--- RSA MODULUS ---\n".encode())
+                pub.write(rsa.get_mod())
+                pub.close()
+        except IOError:
+            print(f'[IO ERROR]: Could not open {rsa.pub_name} to write to. Please Try again.\nExiting')
+            exit(-1)
 
-        with open(rsa.priv_name, 'wb') as priv:
-            priv.write("--- RSA PRIVATE KEY ---\n".encode())
-            priv.write(rsa.get_priv())
-            priv.write("\n".encode())
-            priv.write("--- RSA MODULUS ---\n".encode())
-            priv.write(rsa.get_mod())
-            priv.close()
+        try:
+            with open(rsa.priv_name, 'wb') as priv:
+                priv.write("--- RSA PRIVATE KEY ---\n".encode())
+                priv.write(rsa.get_priv())
+                priv.write("\n".encode())
+                priv.write("--- RSA MODULUS ---\n".encode())
+                priv.write(rsa.get_mod())
+                priv.close()
+        except IOError:
+            print(f'[IO ERROR]: Could not open {rsa.priv_name} to write to. Please Try again.\nExiting')
+            exit(-1)
 
+
+def check_params(p1, p2, totient, d, e):
+    """
+    Determine if RSA parameters meet certain specifications:
+        - prime numbers are not 1024 bits in length
+        - P1 / P2 cannot be the same integer
+        - e * d mod(phi(n)) == 1
+        - totient bit length should be less than 2048 (since we are using 1024 bit prime numbers)
+    :param p1: Prime 1
+    :param p2: Prime 2
+    :param totient: (p1 - 1) (p2 - 1)
+    :param d: - Private exponent
+    :param e: - Public Exponent
+    :return: True if parameters meet conditions, else False
+    """
+    if (p1.bit_length() != 1024): return False
+    if (p2.bit_length() != 1024): return False
+    if( p1 == p2 ): return False
+    if( (e * d) % totient != 1): return False
+    if( totient.bit_length() > 2048 ): return False
+
+    return True
 
 def gen_key(rsa: RSA):
     """
@@ -69,71 +107,111 @@ def gen_key(rsa: RSA):
     :param rsa: RSA instance
     :return: None
     """
+    valid_params = False
     status = FAILURE
     p1 = None
     p2 = None
+    d = None
 
-    # Attempt to generate 2 primes (p / q) and ensure they are not the same
-    while p1 is None or p2 is None or status is not SUCCESS:
+    while not valid_params:
+        # Attempt to generate 2 primes (p / q) and ensure they are not the same
         p1 = gen_prime()
         p2 = gen_prime()
 
-        if p1 != p2:
-            status = SUCCESS
+        # calculate RSA Modulus
+        n = p1 * p2
 
-    #print(f'[p1]: {p1}')
-    #print(f'[p2]: {p2}')
+        # calculate RSA Totient (p-1)(q-1)
+        totient = (p1 - 1) * (p2 - 1)
 
-    # calculate RSA Modulus
-    n = p1 * p2
+        # Set static public exponent 2^16 + 1
+        e = 65537
 
-    # calculate RSA Totient (p-1)(q-1)
-    totient = (p1 - 1) * (p2 - 1)
+        # Calculate modular inverse such that e * d = 1 Mod( Phi (n) )
+        d = modinv(e, totient)
+        #print(d)
 
-    # Set static public exponent 2^16 + 1
-    e = 65537
+        # Check for RSA Valid Parameters
+        valid_params = check_params(p1, p2, totient, d, e)
 
-    # Calculate modular inverse such that e * d = 1 Mod( Phi (n) )
-    d = modinv(e, totient)
+    if valid_params:
+        # Encode RSA Public Exponent as Base64
+        e_64 = base64.b64encode(e.to_bytes((e.bit_length() + 7) // 8, byteorder='big'))
 
-    #print(f'[private] = {d}')
-    #print(f'[mod] = {n}')
+        # Encode RSA Private Key as Base64
+        priv_64 = base64.b64encode(d.to_bytes((d.bit_length() + 7) // 8, byteorder='big'))
 
-    # Encode RSA Public Exponent as Base64
-    e_64 = base64.b64encode(e.to_bytes((e.bit_length() + 7) // 8, byteorder='big'))
-    #print(f'[e64] = {e_64}')
+        # Encode RSA Modulus as Base64
+        mod_64 = base64.b64encode(n.to_bytes((n.bit_length() + 7) // 8, byteorder='big'))
 
-    # Encode RSA Private Key as Base64
-    priv_64 = base64.b64encode(d.to_bytes((d.bit_length() + 7) // 8, byteorder='big'))
-    #print(f'[e64] = {pub_64}')
-
-    # Encode RSA Modulus as Base64
-    mod_64 = base64.b64encode(n.to_bytes((n.bit_length() + 7) // 8, byteorder='big'))
-    #print(f'[e64] = {mod_64}')
-
-    # Set all variables to respective members in our RSA instance
-    rsa.set_pub(e_64)
-    rsa.set_priv(priv_64)
-    rsa.set_mod(mod_64)
-
-    #test1 = int.from_bytes(base64.b64decode(rsa.get_pub()), byteorder='big')
-    #test2 = int.from_bytes(base64.b64decode(rsa.get_priv()), byteorder='big')
-    #test3 = int.from_bytes(base64.b64decode(rsa.get_mod()), byteorder='big')
-
-def egcd(a, b):
-    if a == 0:
-        return (b, 0, 1)
+        # Set all variables to respective members in our RSA instance
+        rsa.set_pub(e_64)
+        rsa.set_priv(priv_64)
+        rsa.set_mod(mod_64)
     else:
-        g, y, x = egcd(b % a, a)
-        return (g, x - (b // a) * y, y)
+        print(f'Could not generate RSA Parameters')
 
 
 def modinv(a, m):
-    g, x, y = egcd(a, m)
+    """
+    Wrapper function for Extended Eucledian Algorithm
+    Using Bezout's identity such that ax + by = gcd(a,b)
+    <WARN> This algorithm implementation follows the following wikipedia page <WARN>
+    <WARN> Code has been commented to demonstrate understanding               <WARN>
+    <WARN> This comment is to mitigate USC academic dishonesty                <WARN>
+    Wrapper taken from here: https://stackoverflow.com/questions/4798654/modular-multiplicative-inverse-function-in-python
+    Extended GCD Derived from pseudocode here: https://en.wikipedia.org/wiki/Extended_Euclidean_algorithm
+    :param a: Public Exponent
+    :param m: Totient
+    :return: Coprime integer that fulfills E*D == 1 mod (phi(n))
+    """
+
+    #call extended eucledian algorithm to find Bezout's coefficients and GCD(a,b)
+    g, x, y = extended_eucledian(a, m)
+
+    # raise exception if no remainder is found else, take bezout's coefficient modded by the totient
     if g != 1:
-        raise Exception('modular inverse does not exist')
+        raise Exception('modular inverse does not exist. Please re-run genkeys.py')
     else:
         return x % m
+
+
+def extended_eucledian(a,b):
+    """
+    Extended Eucledian algorithm for calculating modular inverses - NON RECURSIVE
+    Using Bezout's identity such that ax + by = gcd(a,b)
+    <WARN> This algorithm implementation follows the following wikipedia page <WARN>
+    <WARN> Code has been commented to demonstrate understanding               <WARN>
+    <WARN> This comment is to mitigate USC academic dishonesty                <WARN>
+    Wrapper taken from here: https://stackoverflow.com/questions/4798654/modular-multiplicative-inverse-function-in-python
+    Extended GCD Derived from pseudocode here: https://en.wikipedia.org/wiki/Extended_Euclidean_algorithm
+    :param a: Public Exponent
+    :param b: Totient
+    :return: Bezout's coefficients and greatest common divisor
+    """
+
+    # Variable initialization for keeping track of previous remainder and coefficients
+    old_r = a
+    old_s = 1
+    old_t = 0
+    r = b
+    s = 0
+    t = 1
+
+    # continuously divide remainder by dividend until reaching 1 or 0
+    # compute current/previous remainders, and bezout's coefficients such that we obtain s coefficient that will be
+    # modded by the modulus in modinv() function
+    while r != 0:
+        quotient = old_r // r
+        old_r, r = r, old_r - quotient * r
+        old_s, s = s, old_s - quotient * s
+        old_t, t = t, old_t - quotient * t
+
+    # if bezout's coefficient of interest is negative, reverse polarity by adding totient
+    if old_s < 0:
+        old_s += b
+
+    return old_r, old_s, old_t
 
 
 def gen_prime():
@@ -147,7 +225,7 @@ def gen_prime():
 
     while status is not SUCCESS:
         candidate = int.from_bytes(os.urandom(RSA_MAX_SIZE_BYTES), byteorder="big")
-        status = Miller_Rabin(candidate, 1024)
+        status = Miller_Rabin(candidate, 256)
 
     return candidate
 
@@ -165,21 +243,12 @@ def parse_args():
 
     return RSA(args[1])
 
-
-def debug(rsa_instance):
-    public = int.from_bytes(base64.b64decode(rsa_instance.get_pub()), byteorder='big')
-    private = int.from_bytes(base64.b64decode(rsa_instance.get_priv()), byteorder='big')
-    mod = int.from_bytes(base64.b64decode(rsa_instance.get_mod()), byteorder='big')
-    print(f'Public: {public}')
-    print(f'Private: {private}')
-    print(f'mod: {mod}')
-
-
 def Miller_Rabin(n: int, tests):
     """
     Miller-Rabin Primality test
     <WARN> This algorithm implementation follows the following wikipedia page <WARN>
     <WARN> Code has been commented to demonstrate understanding               <WARN>
+    <WARN> This comment is to mitigate USC academic dishonesty                <WARN>
     Pseudocode Algorithm origination: https://en.wikipedia.org/wiki/Miller%E2%80%93Rabin_primality_test
     :param n: integer to test for primality
     :param tests: number of test to perform
@@ -216,19 +285,32 @@ def Miller_Rabin(n: int, tests):
         # compute random co-integer within same n space
         x = pow(a, remainder, n)  # a ^ remainder mod n
 
+        # calculate the squared modulo (exponent) times. if y == 1, x != 1 and x != n-1 we can
+        # safely assume that this number is composite. After, store the value of y into x for processing
+        # for the next iteration.
         for j in range(exponent):
             y = pow(x, 2, n)
             if y == 1 and x != 1 and x != n - 1:
                 return COMPOSITE_NUM
             x = y
+
+        # at the end of (exponent) iterations, if y should be == 1. If not, return composite number.
         if y != 1:
             return COMPOSITE_NUM
 
+    # if the above holds true, we have a PROBABLE PRIME.
     return SUCCESS
 
 
 if __name__ == '__main__':
+    print("-----------------------------------")
+    print("CSCI-531 RSA-1024 Key Generation")
+    print("-----------------------------------")
+
     rsa_instance = parse_args()
     gen_key(rsa_instance)
     key_IO(rsa_instance)
-    debug(rsa_instance)
+
+    if rsa_instance.pub_key is not None and rsa_instance.priv_key is not None and rsa_instance.modulus is not None:
+        print(f'Successfully Generated {rsa_instance.pub_name}')
+        print(f'Successfully Generated {rsa_instance.priv_name}')

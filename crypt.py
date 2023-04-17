@@ -1,3 +1,12 @@
+""" **************************************************************
+* Programmer : Christopher K. Leung (2965-7518-69)               *
+* Course ID  : CSCI531 - Applied Cryptography                    *
+* Due Date   : March 16, 2023                                    *
+* Project    : RSA-1024 / AES-128 Implementation                 *
+* Purpose    : This file handles encryption and decryption using *
+               AES-128 ECB and encrypting/decrypting the AES red *
+               key with RSA-1024                                 *
+*****************************************************************"""
 import base64
 import os
 import sys
@@ -10,7 +19,6 @@ CRYPT_MAX_ARGS = 5
 ENCRYPT = 0xBEEF4DAD
 DECRYPT = 0xCAFECAFE
 MODE_ERROR = 0xDEADBEEF
-
 
 class Crypt:
     def __init__(self, mode=None, key_file=None, key=None, input_file=None, output_file=None,
@@ -76,16 +84,18 @@ class Crypt:
         return s
 
 
-
-def main():
-    print(f'Inside crypt.py\r\n')
-
-
 def key_IO(crypt_instance: Crypt):
+    """
+    Perform Cryptographic Key Input/Output processing
+    :param crypt_instance: Object storing input / output files
+    :return: none
+    """
+    # error handling
     if crypt_instance.key_file is None:
         print(f'[ERROR]: Crypto key is NULL!')
         exit(-1)
 
+    # Parse encrypted file
     else:
         try:
             with open(crypt_instance.key_file, 'rb') as key:
@@ -97,9 +107,6 @@ def key_IO(crypt_instance: Crypt):
         except IOError:
             print(f'[ERROR]: IO Error. Could not find {crypt_instance.key_file} in files.\nExiting.')
             exit(-1)
-
-    print(int.from_bytes(crypt_instance.get_key(), byteorder='big'))
-    print(int.from_bytes(crypt_instance.get_modulus(), byteorder='big'))
 
 
 def parse_args():
@@ -133,13 +140,27 @@ def parse_args():
 
 
 def encrypt(crypt_inst: Crypt):
+    """
+    Perform AES-128 ECB encryption
+    :param crypt_inst: Object storing red key, and file I/O
+    :return: None
+    """
+
+    # Block size should be 128 bytes
     padder = padding.PKCS7(128).padder()
 
+    # obtain input all plaintext data and use red-key to encrypt
     key = crypt_inst.get_AES_red_key()
     infile = open(crypt_inst.get_input_file(), 'r')
     data = bytes(infile.read(), 'utf-8')
     infile.close()
-    cipher = Cipher(algorithms.AES128(key), modes.ECB())
+
+    try:
+        cipher = Cipher(algorithms.AES128(key), modes.ECB())
+    except ValueError:
+        print(f'[VALUE ERROR]: Invalid AES-128 Key. Have you used the right key?\nExiting.')
+        exit(-1)
+
     encryptor = cipher.encryptor()
 
     padder_data = padder.update(data)
@@ -147,35 +168,59 @@ def encrypt(crypt_inst: Crypt):
 
     ct = encryptor.update(padder_data) + encryptor.finalize()
 
-    with open(crypt_instance.get_output_file(), 'wb') as outfile:
-        outfile.write("--- AES BLACK KEY ---\n".encode())
-        outfile.write(base64.b64encode(crypt_inst.get_AES_black_key()))
-        outfile.write("\n".encode())
-        outfile.write("--- CIPHERTEXT ---\n".encode())
-        outfile.write(base64.b64encode(ct))
-        outfile.close()
-
+    # write to output file AES-128 black key and ciphertext
+    try:
+        with open(crypt_instance.get_output_file(), 'wb') as outfile:
+            outfile.write("--- AES BLACK KEY ---\n".encode())
+            outfile.write(base64.b64encode(crypt_inst.get_AES_black_key()))
+            outfile.write("\n".encode())
+            outfile.write("--- CIPHERTEXT ---\n".encode())
+            outfile.write(base64.b64encode(ct))
+            outfile.close()
+    except IOError:
+        print(f'[IO ERROR]: Could not open {crypt_instance.output_file} to write to. Please Try again.\nExiting')
+        exit(-1)
 
 def decrypt(crypt_inst: Crypt):
+    """
+    Perform AES-128 ECB decryption
+    :param crypt_inst: object that stores AES-Black Key and Ciphertext
+    :return: None
+    """
+
+    # get AES red key used for decrypting ciphertext
     key = crypt_inst.get_AES_red_key()
     ct = crypt_inst.get_ct()
     unpadder = padding.PKCS7(128).unpadder()
-    cipher = Cipher(algorithms.AES128(key), modes.ECB())
+
+    try:
+        cipher = Cipher(algorithms.AES128(key), modes.ECB())
+    except ValueError:
+        print(f'[VALUE ERROR]: Invalid AES-128 Key. Have you used the right key?\nExiting.')
+        exit(-1)
+
     decryptor = cipher.decryptor()
     pt = decryptor.update(ct) + decryptor.finalize()
-    print(pt)
 
     unpadderdata = unpadder.update(pt)
     unpadderdata += unpadder.finalize()
 
-    print(unpadderdata.decode())
-
-    outfile = open(crypt_inst.get_output_file(), 'wb')
-    outfile.write(unpadderdata)
-    outfile.close()
+    # write to output file
+    try:
+        outfile = open(crypt_inst.get_output_file(), 'wb')
+        outfile.write(unpadderdata)
+        outfile.close()
+    except IOError:
+        print(f'[IO ERROR]: Could not open {crypt_instance.output_file} to write to. Please Try again.\nExiting')
+        exit(-1)
 
 
 def gen_AES_key(crypt_instance):
+    """
+    Generate AES-128 ECB Red key
+    :param crypt_instance: object that stores AES data
+    :return: None
+    """
     if crypt_instance.key is None:
         print(f'[ERROR]: RSA KEY FILE NOT FOUND. Exiting')
         exit(-1)
@@ -194,19 +239,23 @@ def gen_AES_key(crypt_instance):
     crypt_instance.set_AES_red_key(key)
     crypt_instance.set_AES_black_key(black_key_bytes)
 
-    print(f'[AES Red]: {crypt_instance.get_AES_red_key()}')
-    print(f'[AES Black]: {crypt_instance.get_AES_black_key()}')
-    print(f'[RSA Key]: {base64.b64encode(crypt_instance.get_key())}')
-    print(f'[RSA Mod]: {base64.b64encode(crypt_instance.get_modulus())}')
-
 
 def retrieve_AES_key(crypt_instance):
-    with open(crypt_instance.get_input_file(), 'rb') as infile:
-        infile.readline()  # read AES Black Key Header
-        crypt_instance.set_AES_black_key(base64.b64decode(infile.readline()))
-        infile.readline()  # read CT Header
-        crypt_instance.set_ct(base64.b64decode(infile.readline()))
-        infile.close()
+    """
+    Retrieve AES Black key, then unwrap using RSA-1024
+    :param crypt_instance: Object storage
+    :return: None
+    """
+    try:
+        with open(crypt_instance.get_input_file(), 'rb') as infile:
+            infile.readline()  # read AES Black Key Header
+            crypt_instance.set_AES_black_key(base64.b64decode(infile.readline()))
+            infile.readline()  # read CT Header
+            crypt_instance.set_ct(base64.b64decode(infile.readline()))
+            infile.close()
+    except IOError:
+        print(f'[IO ERROR]: Could not open {crypt_instance.input_file} to read from. Please ensure path is correct.\nExiting')
+        exit(-1)
 
     black_key = crypt_instance.get_AES_black_key()
     black_key_int = int.from_bytes(black_key, byteorder='big')
@@ -220,13 +269,20 @@ def retrieve_AES_key(crypt_instance):
 
 
 if __name__ == '__main__':
-    # main()
+    print("------------------------------------------")
+    print("CSCI-531 RSA-1024 / AES-128 Implementation")
+    print("------------------------------------------")
+
     crypt_instance = parse_args()
     key_IO(crypt_instance)
-    print(f'---- instance of crypt----\r\n{crypt_instance}')
+
     if crypt_instance.get_mode() == ENCRYPT:
+        print(f'Attempting to encrypt \"{crypt_instance.input_file}\"')
         gen_AES_key(crypt_instance)
         encrypt(crypt_instance)
+        print(f'Successfully generated \"{crypt_instance.output_file}\"')
     else:
+        print(f'Attempting to decrypt \"{crypt_instance.input_file}\"')
         retrieve_AES_key(crypt_instance)
         decrypt(crypt_instance)
+        print(f'Successfully generated \"{crypt_instance.output_file}\"')
